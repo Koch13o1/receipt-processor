@@ -1,111 +1,92 @@
 package services
 
 import (
-	"errors"
 	"math"
+	"regexp"
+	"strings"
+	"time"
+
 	"receipt-processor/models"
 	"receipt-processor/storage"
 	"receipt-processor/utils"
-	"strings"
-	"time"
 )
 
-// SaveReceipt stores the receipt and returns a unique ID
+// SaveReceipt computes the points, stores it, and returns a unique ID.
 func SaveReceipt(receipt models.Receipt) (string, error) {
-	// Validate and convert prices
-	if err := receipt.ValidateAndConvert(); err != nil {
-		return "", errors.New("invalid receipt: " + err.Error())
+	// Validate and convert string values to float64
+	if err := receipt.ConvertToFloat64(); err != nil {
+		return "", err
 	}
 
-	// Generate unique ID and store receipt
+	// Calculate points based on the rules and assign to the receipt
+	receipt.Points = CalculatePoints(receipt)
+
+	// Generate a unique ID and store the receipt (including its points)
 	id := utils.GenerateUUID()
 	storage.StoreReceipt(id, receipt)
 
 	return id, nil
 }
 
-// GetReceiptPoints retrieves the points assigned to a receipt
+// GetReceiptPoints retrieves the precomputed points for a receipt.
 func GetReceiptPoints(id string) (int, bool) {
 	receipt, exists := storage.GetReceipt(id)
 	if !exists {
 		return 0, false
 	}
+	return receipt.Points, true
+}
 
+// CalculatePoints applies all the rules to compute the points for the receipt.
+func CalculatePoints(receipt models.Receipt) int {
 	points := 0
 
-	// Retailer name points: One point for every alphanumeric character
-	points += countAlphanumeric(receipt.Retailer)
+	// One point for every alphanumeric character in the retailer name.
+	re := regexp.MustCompile(`[a-zA-Z0-9]`)
+	points += len(re.FindAllString(receipt.Retailer, -1))
 
-	// 50 points if total is a round number
-	if isRoundNumber(receipt.TotalValue) {
+	// 50 points if the total is a round dollar amount (no cents).
+	if math.Mod(receipt.TotalValue, 1.0) == 0 {
 		points += 50
 	}
 
-	// 25 points if total is a multiple of 0.25
-	if isMultipleOfQuarter(receipt.TotalValue) {
+	// 25 points if the total is a multiple of 0.25.
+	if math.Mod(receipt.TotalValue, 0.25) == 0 {
 		points += 25
 	}
 
-	// 5 points for every two items
+	// 5 points for every two items.
 	points += (len(receipt.Items) / 2) * 5
 
-	// Item description length + price rule
+	// For each item, if the trimmed description length is a multiple of 3,
+	// add ceil(price * 0.2) points.
 	for _, item := range receipt.Items {
-		trimmedDesc := strings.TrimSpace(item.ShortDescription)
-		if len(trimmedDesc)%3 == 0 {
-			pricePoints := int(math.Ceil(item.PriceValue * 0.2))
-			points += pricePoints
+		trimmed := strings.TrimSpace(item.ShortDescription)
+		if len(trimmed)%3 == 0 {
+			// Calculate points for this item.
+			itemPoints := int(math.Ceil(item.PriceValue * 0.2))
+			points += itemPoints
 		}
 	}
 
-	// 6 points if purchase date is an odd day
-	if isOddDay(receipt.PurchaseDate) {
-		points += 6
-	}
-
-	// 10 points if purchase time is between 14:00 - 16:00
-	if isBetweenTwoAndFour(receipt.PurchaseTime) {
-		points += 10
-	}
-
-	return points, true
-}
-
-// countAlphanumeric function counts the number of alphanumeric characters in a string
-func countAlphanumeric(s string) int {
-	count := 0
-	for _, char := range s {
-		if (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') {
-			count++
+	// 6 points if the purchase date's day is odd.
+	if t, err := time.Parse("2006-01-02", receipt.PurchaseDate); err == nil {
+		if t.Day()%2 == 1 {
+			points += 6
 		}
 	}
-	return count
-}
 
-// isRoundNumber function checks if the total is a whole number with no cents
-func isRoundNumber(total float64) bool {
-	return math.Mod(total, 1.0) == 0
-}
-
-// isMultipleOfQuarter function checks if the total is a multiple of 0.25
-func isMultipleOfQuarter(total float64) bool {
-	return math.Mod(total, 0.25) == 0
-}
-
-// isOddDay function checks if the day in the purchase date is odd
-func isOddDay(dateStr string) bool {
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return false
+	// 10 points if the purchase time is after 2:00 PM and before 4:00 PM.
+	if t, err := time.Parse("15:04", receipt.PurchaseTime); err == nil {
+		hour := t.Hour()
+		if hour >= 14 && hour < 16 {
+			points += 10
+		}
 	}
-	return date.Day()%2 != 0
-}
 
-// isBetweenTwoAndFour function checks if the purchase time is between 14:00 and 16:00
-func isBetweenTwoAndFour(timeStr string) bool {
-	parsedTime, err := time.Parse("15:04", timeStr)
-	if err != nil {
-		return false
-	}
-	return parsedTime.Hour() >= 14 && parsedTime.Hour() < 16
+	// if receipt.TotalValue > 10.00 {
+	// 	points += 5
+	// }
+
+	return points
 }

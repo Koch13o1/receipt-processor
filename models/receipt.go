@@ -6,15 +6,16 @@ import (
 )
 
 // Item represents an item in a receipt.
-// I have added a PriceValue field that convertes the Price from string to PriceValue, i.e. float64.
+// Price remains a string (as received from JSON), and PriceValue holds the float64 value.
 type Item struct {
 	ShortDescription string  `json:"shortDescription" binding:"required"`
 	Price            string  `json:"price" binding:"required"`
 	PriceValue       float64 `json:"-"`
 }
 
-// Receipt represents a receipt object.
-// I have added a TotalValue field wherein the Total string is parsed and converted to TotalValue which is float64.
+// Receipt represents a receipt.
+// Total is received as a string, and TotalValue holds the float64 value.
+// Points is computed when the receipt is saved.
 type Receipt struct {
 	Retailer     string  `json:"retailer" binding:"required"`
 	PurchaseDate string  `json:"purchaseDate" binding:"required"`
@@ -22,32 +23,24 @@ type Receipt struct {
 	Items        []Item  `json:"items" binding:"required,dive"`
 	Total        string  `json:"total" binding:"required"`
 	TotalValue   float64 `json:"-"`
+	Points       int     `json:"-"`
 }
 
-// ValidateAndConvert function is used to convert string total and price fields of items to float64
-// It also ensures if sum of prices is equal to total, to validate the receipt.
-
-func (r *Receipt) ValidateAndConvert() error {
+// ValidateAndConvert converts the Total and each item's Price from string to float64.
+// This version does not check if the sum of item prices equals the total.
+func (r *Receipt) ConvertToFloat64() error {
 	total, err := strconv.ParseFloat(r.Total, 64)
-
-	var totalSum float64
-
 	if err != nil {
-		return err
+		return errors.New("invalid total value")
 	}
 	r.TotalValue = total
 
 	for i := range r.Items {
 		price, err := strconv.ParseFloat(r.Items[i].Price, 64)
 		if err != nil {
-			return err
+			return errors.New("invalid item price")
 		}
 		r.Items[i].PriceValue = price
-		totalSum += price
-	}
-
-	if totalSum != r.TotalValue {
-		return errors.New("receipt total does not match sum of item prices")
 	}
 
 	return nil
