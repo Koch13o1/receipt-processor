@@ -29,9 +29,9 @@ This application used:
    ```
 
 2. **Installing Dependencies:**
-  ```sh
-  go mod tidy
-   ```
+     ```sh
+     go mod tidy
+      ```
 
 
 ### API Endpoints
