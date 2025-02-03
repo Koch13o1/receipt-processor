@@ -84,9 +84,5 @@ func CalculatePoints(receipt models.Receipt) int {
 		}
 	}
 
-	// if receipt.TotalValue > 10.00 {
-	// 	points += 5
-	// }
-
 	return points
 }
