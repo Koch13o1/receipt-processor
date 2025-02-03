@@ -24,7 +24,7 @@ This application used:
 
 1. **Clone the Repository:**
    ```sh
-   git clone https://github.com/YOUR_USERNAME/receipt-processor.git
+   git clone https://github.com/Koch13o1/receipt-processor.git
    cd receipt-processor
    ```
 
