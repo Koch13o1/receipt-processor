@@ -17,7 +17,8 @@ This application used:
 
 ### Prerequisites
 
-- [Go 1.19+](https://golang.org/dl/)
+- [Go 1.23+](https://golang.org/dl/)
+
 
 ### Installation
 
@@ -25,10 +26,43 @@ This application used:
    ```sh
    git clone https://github.com/YOUR_USERNAME/receipt-processor.git
    cd receipt-processor
+   ```
 
 2. **Installing Dependencies:**
   ```sh
   go mod tidy
+   ```
 
-### Running the Service
+
+### API Endpoints
+- POST /receipts/process
+- GET /receipts/{id}/points
+(Available at http://localhost:8080)
+
+
+### Testing
+Unit tests are provided in the tests/ directory. Run the tests using:
+```sh
+go test -v ./...
+```
+
+
+### Architecture & Design Choices
+- Points calculation is done at the time of receipt storage instead of retrieval to improve performance.
+- The application is designed to handle receipts efficiently using in-memory storage for quick access.
+- Having the controllers, services, storage, and tests to be separate for scalability and reusability.
+
+
+### Challenges Faced
+- Ensuring accurate and efficient receipt parsing while handling potential formatting inconsistencies.
+
+
+### Future Scope
+- Persist receipts in a database instead of in-memory storage to allow scalability.
+- Add authentication and user-based receipt management.
+- Also, in the receipt.go, I could add a validation logic to check if sum of all the prices of items equals the total as we are given both the values.
+
+
+###
+
 
