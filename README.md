@@ -50,7 +50,7 @@ go test -v ./...
 ### Architecture & Design Choices
 - Points calculation is done at the time of receipt storage instead of retrieval to improve performance.
 - The application is designed to handle receipts efficiently using in-memory storage for quick access.
-- Having the controllers, services, storage, and tests to be separate for scalability and reusability.
+- It has the controllers, services, storage, and tests separate, for scalability and reusability reasons.
 
 
 ### Challenges Faced
